@@ -4,11 +4,10 @@
 
 @ define our constants and global variables
 .data
-@ printf("Enter a number: );
-outPrompt: .asciz "Enter a number: "
-@ scanf(%d, address to write to);
+outPrompt: .asciz "Enter Fibonacci term: "
 input: .asciz "%d"
-outp: .asciz "The result is: %d\n"
+outp1: .asciz "The %dth "
+outp2: .asciz "Fibonacci term is: %d\n"
 
 
 @ define the text section for the assembler to
@@ -22,11 +21,9 @@ outp: .asciz "The result is: %d\n"
 @ define function main
 
 main:
+mov r4, lr
 
-mov r4, lr  @ store lr in a safe place (nonvolatile)
-     
 ldr r0, =outPrompt
-
 bl printf
      
 sub sp, sp, #4
@@ -40,8 +37,8 @@ ldr r9, [sp]
 @ store the first two values of the sequence into 
 @ registers
 
-mov r5, #1  @ a = 1 or r5 = 1
-mov r6, #1  @ b = 1 or r6 = 1
+mov r5, #1
+mov r6, #1
 
 @ initialize counter variable n to 3 (third term)
 mov r7, #3   @ n = 3 or r7 = 3
@@ -51,16 +48,21 @@ mov r7, #3   @ n = 3 or r7 = 3
 @ x(0) = 1, x(1) = 2  (a = x(0) and b = x(1))
 
 whileloop:
-
 add r8, r5, r6
 
 mov r5, r6  @ a = b
 mov r6, r8  @ b = c
+
+@ checking to see if the user input equals 1 or 2
+@ if so, auto return 1 since the first two nums of the sequnece
+@ are equal to 1
+cmpls r9, #2 
+movls r8, #1
      
 @ increment out counter n
 add r7, r7, #1  @ n = n + 1
 
-cmp r7, r9 @ check if r7 vs user input
+cmp r7, r9 @ check r7 vs user input
 ble whileloop  @ if (r7 < user input) goto whileloop
 
 @ set the print arguments
@@ -70,10 +72,13 @@ ble whileloop  @ if (r7 < user input) goto whileloop
 @ printf(outp, r8)
 @ r0 <-- outp,  r1 <-- r8
 
-mov r1, r8  @ r1 = r8
-ldr r0, =outp  @ load into r0 the value stored at address outp
-               @ The = operator acts as a dereference operator on 
-               @ outp, which stores the address of the string
+mov r1, r9  @ r1 = r9
+
+ldr r0, =outp1 
+bl printf
+
+mov r1, r8
+ldr r0, =outp2
 
 bl printf @ calls the printf function from C.  The bl branches to
           @ the function address printf and stores the current value
