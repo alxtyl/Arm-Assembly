@@ -7,43 +7,39 @@ begin: .asciz "Generated Pile:\n"
 startGame: .asciz "\nGame Starting!\n"
 outp: .asciz "[%d] = "
 outp2: .asciz "%d\n"
-dble: .asciz "\n\n"
-gameOver: .asciz "Game finished!"
+newLin: .asciz "\n"
+endMsg: .asciz "Game finished!\n"
 
 .text
 .align 2
 .global main
-.global playRound
-.global endGame
 .type main, %function
-.type playRound, %function
-.type endGame, %function
 
 main:
-    @ program upkeep
     push {fp, lr}
-	add fp, sp, #4
+    add fp, sp, #4
 
     @ allocat a[45] for storage of up to 45 piles
     sub sp, sp, #180
     
+    @ setting up from random num generation
     mov r0, #0
     bl time
     bl srand
-    
-    @ getting number of piles
-    mov r0, #1
-    mov r1, #10
-    bl random
-    mov r7, r0
 
     mov r4, #0   @ i counter
     mov r8, #45  @ total cards
     
     ldr r0, =begin
     bl printf
+    
+    b writeLoop
+    
+    mov r0, #0
+    sub sp, fp, #4
+    pop {fp, lr}
 
-writeLoop:
+writeLoop: @ writing random piles into the array
     cmp r8, #0
     ble reset
 
@@ -53,21 +49,22 @@ writeLoop:
 
     @ calculate byte offset into array
     mov r2, #4
-    mul r2, r2, r4  @ i*4 bytes
-
+    mul r2, r2, r4    @ i*4 bytes
     str r0, [sp, r2]  @ sp[r4] = r0
     
-    sub r8, r8, r0
-    add r4, r4, #1  @ i = i + 1
+    sub r8, r8, r0    @ subtract the num of piles by the current
+                      @ currents random number to get the next range
+                      @ of piles
+    add r4, r4, #1    @ i++
     b writeLoop
 
 reset: 
     mov r10, r4 @ number of piles = i
     mov r4, #0  @ i = 0
 
-printLoop:
+printLoop: @ display the current piles before the game starts
     cmp r4, r10 @ checking for end condtion
-    beq reset2
+    beq gameStart
    
     @ print i
     mov r1, r4
@@ -83,200 +80,176 @@ printLoop:
     ldr r0, =outp2
     bl printf
     
-    add r4, r4, #1 @ uptick i
+    add r4, r4, #1 @ i++
     b printLoop
     
-reset2:
-    mov r10, r4 @ number of piles = i
-    mov r4, #0  @ reset counter i
-    
+gameStart: @ displays start message
     ldr r0, =startGame
     bl printf
     
     b playRound
-    
-playRound:
-    mov r4, #0
+
+playRound: @ starts a round and resets the i counter
+    mov r4, #0 @ i = 0
     b reducePile
     
-reducePile:
+reducePile: @ reduces a pile by 1 and then loads it back into 
+            @ the array
     @ comapre i to num of piles
     cmp r4, r10 
     bge addPile
    
-    @ array operations
-    @ a[i] = a[i] - 1
+    @ subbing a[i] by one and returning it
     mov r2, #4
     mul r2, r2, r4
     
-    ldr r1, [sp, r2]
-    sub r1, r1, #1
-    str r1, [sp, r2]
+    ldr r1, [sp, r2] @ load a[i]
+    sub r1, r1, #1   @ a[i] = a[i]--
+    str r1, [sp, r2] @ store a[i]--
    
-    add r4, r4, #1 @ uptick i counter
+    add r4, r4, #1   @ i++
     b reducePile
     
-addPile:
-    @ calculate byte offset into array
+addPile: @ adds a pile equal to the number of piles
     mov r2, #4
     mul r2, r2, r4
-    str r4, [sp, r2] @ a[i] = i
+    str r4, [sp, r2] @ a[i] = i (where i is the num of piles)
     
-    add r10, r10, #1 @ uptick pile size
+    add r10, r10, #1 @ i++
     
+    mov r4, #0 @ i = 0
     b srtArr
     
-rmZeros:
-    mov r4, #0
-    mov r11, r4
+rmZeros: @ removes the zeros from pile
+    mov r2, #4
+    mul r2, r2, r4
+    ldr r8, [sp, r2]
     
-    traverse:  
+    cmp r8, #0    @ if a[i] == 0, shift pile over
+    beq shiftPile
+    
+    cmp r8, #0    @ if a[i] > 0, shift is no longer needed
+    bgt doneShift
+    
+    shiftPile:
+        mov r9, r4      
+        add r9, r9, #1 @ r9 = i++
+        cmp r9, r10    @ if r9 => num of piles, reset i and
+                       @ piles--
+        bge reduceSize
+        
+        mov r2, #4     
+        mul r2, r2, r9 
+        ldr r12, [sp, r2] @ access a[i++]
+        
         mov r2, #4
         mul r2, r2, r4
-        ldr r9, [sp, r2]
+        str r12, [sp, r2] @ store a[i++] in a[i]
+        add r4, r4, #1    @ i++
         
-        cmp r9, #0    @ if a[i] == 0, shift pile
-        beq shiftPile
+        b shiftPile
         
-        cmp r9, #0    @ if a[i] > 0, shift is done
-        bgt doneShift
+    reduceSize:
+        mov r4, #0
+        sub r10, r10, #1 @ pile--
         
-        shiftPile:
-            mov r11, r4
-            add r11, r11, #1
-            cmp r11, r10
-            bgt reduceSize
-            
-            mov r2, #4
-            mul r2, r2, r11
-            ldr r12, [sp, r2]
-            
-            mov r2, #4
-            mul r2, r2, r4
-            str r12, [sp, r2]
-            add r4, r4, #1
-            
-            b shiftPile
-            
-        reduceSize:
-            mov r4, #0
-            sub r10, r10, #1
-            
-            b traverse
-            
+        b rmZeros
+        
     doneShift:
+        mov r4, #0 @ i = 0
         b printLoop2
 
 srtArr:
-    mov r4, #0 @ i = 0
+    cmp r4, r10
+    bge doneSort
     
-    mov r11, r4
-    add r11, r11, #1
+    mov r9, r4
+    add r9, r9, #1 @ (i + 1)++ counter
     
-    loopi:
-        cmp r4, r10
-        bge doneSort
+    loop: 
+        cmp r9, r10
+        bge doneLoop
         
-        mov r11, r4
-        add r11, r11, #1
+        mov r2, #4
+        mul r2, r2, r4
+        ldr r7, [sp, r2]
         
-        loopj: 
-            cmp r11, r10
-            bge doneLoopj
+        mov r2, #4
+        mul r2, r2, r9
+        ldr r8, [sp, r2]
+        
+        cmp r7, r8
+        ble skip
+        
+        mov r2, #4
+        mul r2, r2, r4
+        str r8, [sp, r2]
+        
+        mov r2, #4
+        mul r2, r2, r9
+        str r7, [sp, r2]
+        
+        skip:  
+            add r9, r9, #1
+            b loop
             
-            mov r2, #4
-            mul r2, r2, r4
-            ldr r7, [sp, r2]
-            
-            mov r2, #4
-            mul r2, r2, r11
-            ldr r8, [sp, r2]
-            
-            cmp r7, r8
-            ble skip
-            
-            mov r2, #4
-            mul r2, r2, r4
-            str r8, [sp, r2]
-            
-            mov r2, #4
-            mul r2, r2, r11
-            str r7, [sp, r2]
-            
-            skip:  
-                add r11, r11, #1
-                b loopj
-                
-        doneLoopj:
-            add r4, r4, #1
-            b loopi
-            
+    doneLoop:
+        add r4, r4, #1
+        b srtArr
+        
     doneSort:
+        mov r4, #0
         b rmZeros
 
-printLoop2:
-    mov r7, r0
-    mov r4, #0
+printLoop2: @ prints out array after a round has been played
+    cmp r4, r10 @ checking for end condtion
+    beq donePrint
+
+    @ print i
+    mov r1, r4
+    ldr r0, =outp
+    bl printf
+
+    @ array operations
     mov r2, #4
+    mul r2, r2, r4
+    ldr r1, [sp, r2]
+
+    @ print a[i]
+    ldr r0, =outp2
+    bl printf
     
-    print:
-        cmp r4, r10 @ checking for end condtion
-        beq donePrint
-
-        @ print i
-        mov r1, r4
-        ldr r0, =outp
-        bl printf
-
-        @ array operations
-        mov r2, #4
-        mul r2, r2, r4
-        ldr r1, [sp, r2]
-
-        @ print a[i]
-        ldr r0, =outp2
-        bl printf
-        
-        add r4, r4, #1 @ uptick i
-        b print
+    add r4, r4, #1 @ i++
+    b printLoop2
     
     donePrint:
-        mov r4, r7
-    
-        ldr r0, =dble
+        ldr r0, =newLin
         bl printf
         
+        mov r4, #0 @ reset i
         b endGame
-        
-done:
-	ldr r0, =gameOver
-	bl printf
     
-	sub sp, fp, #4
-	pop {fp,lr}
+endGame: @ check to see if final pile has been reached
+    mov r9, r4
+    add r9, r9, #1
     
-endGame:
-    mov r4, #0
+    cmp r4, r10
+    beq done
+
+    mov r2, #4
+    mul r2, r2, r4
+    ldr r1, [sp, r2]
     
-    finTraverse:
-        mov r11, r4
-        add r11, r11, #1
-        
-        cmp r4, r10
-        bge done
-        
-        mov r2, #4
-        mul r2, r2, r4
-        ldr r9, [sp, r2]
-        
-        cmp r11, r9
-        bne playRound
-        
-        add r4, r4, #1
-        b finTraverse
-
-   
-
-
-
-
+    cmp r1, r9
+    bne playRound  @ if a[i] != a[i] keep playing
+    
+    add r4, r4, #1 @ i++
+    b endGame
+      
+done: @ displays end message and ends program
+    ldr r0, =endMsg
+    bl printf
+ 
+    mov r0, #0 @ return 0
+    sub sp, fp, #4
+    pop {fp, lr}

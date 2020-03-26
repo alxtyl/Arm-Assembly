@@ -5,6 +5,8 @@
 .align 2
 .global random
 .type random, %function
+.global modulo
+.type modulo, %function
 
 random:
    push {fp, lr}
@@ -34,7 +36,6 @@ random:
    pop {fp, pc}
    
 modulo:
-
    push {fp, lr}
    add fp, sp, #4
 
