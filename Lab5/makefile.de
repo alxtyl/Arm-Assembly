@@ -1,0 +1,14 @@
+decoder: decode.o read_image.o decoder.o read_int.o
+	gcc -o decoder decode.o read_image.o decoder.o read_int.o -L . -lutil
+
+decode.o: decode.s
+	gcc -c -g decode.s
+
+read_image.o: read_image.s
+	gcc -c -g read_image.s
+
+decoder.o: decoder.s
+	gcc -c -g decoder.s
+
+read_int.o: read_int.s
+	gcc -c -g read_int.s
