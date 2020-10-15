@@ -1,2 +1,2 @@
-# CSCI-212
-Labs &amp; Homework from Assembly
+# Arm-Assembly
+Labs &amp; Homework from my class in Assembly
